@@ -1,8 +1,5 @@
 #!/bin/bash
 
-virtualenv venv
-source venv/bin/activate
-
 pip install -r requirements.txt
 
 git clone --recurse-submodules https://github.com/mlperf/inference.git mlperf_inference
