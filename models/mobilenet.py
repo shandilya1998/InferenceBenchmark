@@ -51,7 +51,7 @@ class MobileNet(nn.Module):
         return x
 
 
-def get_mobilenet(path="./checkpoint.pth.tar"):
+def get_mobilenet(path="./mobilenet_sgd_68.848.pth.tar"):
     net = MobileNet()
     state_dict = torch.load(path)
     net.load_state_dict(state_dict)
