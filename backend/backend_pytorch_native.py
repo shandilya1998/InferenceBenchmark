@@ -5,7 +5,8 @@ pytoch native backend
 import torch  # currently supports pytorch1.0
 import backend.backend as backend
 from models import mobilenet
-
+from models import resnet50
+import collections
 
 class BackendPytorchNative(backend.Backend):
     def __init__(self):

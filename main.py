@@ -83,6 +83,14 @@ SUPPORTED_PROFILES = {
         "backend": "onnxruntime",
         "model-name": "resnet50",
     },
+    
+    "resnet50-pytorch": {
+        "inputs": "input_tensor:0",
+        "dataset": "imagenet",
+        "outputs": "ArgMax:0",
+        "backend": "pytorch-native",
+        "model-name": "resnet50",
+    },
 
     # mobilenet
     "mobilenet-tf": {
@@ -399,7 +407,7 @@ def main():
     args = get_args()
 
     log.info(args)
-
+    print(args.backend)
     # find backend
     backend = get_backend(args.backend)
 
@@ -423,6 +431,7 @@ def main():
                         use_cache=args.cache,
                         count=count, **kwargs)
     # load model to backend
+    print(args.model)
     model = backend.load(args.model, inputs=args.inputs, outputs=args.outputs)
     final_results = {
         "runtime": model.name(),
