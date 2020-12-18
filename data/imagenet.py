@@ -8,7 +8,7 @@ import time
 import cv2
 import numpy as np
 
-import dataset
+from data import dataset
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("imagenet")

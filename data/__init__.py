@@ -1,2 +1,2 @@
-import coco
-import imagenet
+import data.coco
+import data.imagenet

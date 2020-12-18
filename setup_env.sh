@@ -1,6 +1,6 @@
 #!/bin/bash
 
-pip install -r requirements.txt
+#pip install -r requirements.txt
 
 git clone --recurse-submodules https://github.com/mlperf/inference.git mlperf_inference
 

@@ -1,0 +1,22 @@
+{
+    "TestScenario.SingleStream": {
+        "count": 100,
+        "good_items": 0,
+        "mean": 0.062473707999999996,
+        "percentiles": {
+            "50.0": 0.061041434500000005,
+            "80.0": 0.0655480276,
+            "90.0": 0.0686000131,
+            "95.0": 0.07190135145,
+            "99.0": 0.11534468980000022,
+            "99.9": 0.15321671608000045
+        },
+        "qps": 15.861329538386325,
+        "took": 6.3046417236328125,
+        "total_items": 100
+    },
+    "cmdline": "Namespace(accuracy=False, backend='pytorch', cache=0, config='./mlperf.conf', count=100, data_format=None, dataset='imagenet_mobilenet', dataset_list=None, dataset_path='data/ILSVRC2012_img_val/', find_peak_performance=False, inputs=None, max_batchsize=32, max_latency=None, model='models/weights/mobilenet_v1_1.0_224.onnx', model_name='mobilenet', output='/Users/shreyasshandilya/Desktop/Shandilya/Padhai/CS6886/assignment5/output/pytorch-cpu/mobilenet', outputs=['MobilenetV1/Predictions/Reshape_1:0'], profile='mobilenet-onnxruntime', qps=None, samples_per_query=None, scenario='SingleStream', threads=4, time=60)",
+    "runtime": "pytorch",
+    "time": 1608280612,
+    "version": "1.7.1"
+}

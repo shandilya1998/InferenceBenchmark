@@ -1,9 +1,9 @@
 import torch.nn as nn
 import wget
-import utils.config as config
-from utils.decoder import ResidualRecurrentDecoder
-from utils.models.encoder import ResidualRecurrentEncoder
-from utils.models.seq2seq_base import Seq2Seq
+import models.config as config
+from models.decoder import ResidualRecurrentDecoder
+from models.encoder import ResidualRecurrentEncoder
+from models.seq2seq_base import Seq2Seq
 
 
 class GNMT(Seq2Seq):

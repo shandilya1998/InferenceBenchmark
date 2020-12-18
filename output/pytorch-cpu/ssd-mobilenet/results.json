@@ -1,0 +1,22 @@
+{
+    "TestScenario.SingleStream": {
+        "count": 100,
+        "good_items": 0,
+        "mean": 0.36587669485999996,
+        "percentiles": {
+            "50.0": 0.36304210800000003,
+            "80.0": 0.42698555820000006,
+            "90.0": 0.4930931295000001,
+            "95.0": 0.55476176085,
+            "99.0": 0.6832045271700002,
+            "99.9": 0.7139179360170004
+        },
+        "qps": 2.7200408342311824,
+        "took": 36.76415395736694,
+        "total_items": 100
+    },
+    "cmdline": "Namespace(accuracy=False, backend='pytorch-native', cache=0, config='./mlperf.conf', count=100, data_format=None, dataset='coco-300-pt', dataset_list=None, dataset_path='data/coco/', find_peak_performance=False, inputs=['image'], max_batchsize=32, max_latency=None, model='models/weights/ssd_mobilenet_v1.pytorch', model_name='ssd-mobilenet', output='/Users/shreyasshandilya/Desktop/Shandilya/Padhai/CS6886/assignment5/output/pytorch-cpu/ssd-mobilenet', outputs=['bboxes', 'labels', 'scores'], profile='ssd-mobilenet-pytorch', qps=None, samples_per_query=None, scenario='SingleStream', threads=4, time=60)",
+    "runtime": "pytorch-native",
+    "time": 1608290646,
+    "version": "1.7.1"
+}

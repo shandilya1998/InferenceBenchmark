@@ -12,8 +12,8 @@ import time
 import cv2
 import numpy as np
 from pycocotools.cocoeval import COCOeval
-import pycoco
-import dataset
+from data import pycoco
+from data import dataset
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("coco")

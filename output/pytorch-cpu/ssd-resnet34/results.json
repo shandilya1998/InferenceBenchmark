@@ -1,0 +1,22 @@
+{
+    "TestScenario.SingleStream": {
+        "count": 8,
+        "good_items": 0,
+        "mean": 9.8768652035,
+        "percentiles": {
+            "50.0": 10.4702311895,
+            "80.0": 11.1234506496,
+            "90.0": 11.200023965,
+            "95.0": 11.2336024855,
+            "99.0": 11.2604653019,
+            "99.9": 11.26650943559
+        },
+        "qps": 0.10087619197512536,
+        "took": 79.3051347732544,
+        "total_items": 8
+    },
+    "cmdline": "Namespace(accuracy=False, backend='pytorch-native', cache=0, config='./mlperf.conf', count=100, data_format=None, dataset='coco-1200-pt', dataset_list=None, dataset_path='data/coco/', find_peak_performance=False, inputs=['image'], max_batchsize=32, max_latency=None, model='models/weights/resnet34-ssd1200.pytorch', model_name='ssd-resnet34', output='/Users/shreyasshandilya/Desktop/Shandilya/Padhai/CS6886/assignment5/output/pytorch-cpu/ssd-resnet34', outputs=['bboxes', 'labels', 'scores'], profile='ssd-resnet34-pytorch', qps=None, samples_per_query=None, scenario='SingleStream', threads=4, time=60)",
+    "runtime": "pytorch-native",
+    "time": 1608290392,
+    "version": "1.7.1"
+}
