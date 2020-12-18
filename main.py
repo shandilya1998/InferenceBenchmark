@@ -19,7 +19,7 @@ from queue import Queue
 
 import mlperf_loadgen as lg
 import numpy as np
-
+from models import mobilenet
 from data import dataset, imagenet, coco
 
 logging.basicConfig(level=logging.INFO)
@@ -98,6 +98,14 @@ SUPPORTED_PROFILES = {
         "backend": "onnxruntime",
         "model-name": "mobilenet",
     },
+
+    "mobilenet-pytorch": {
+        "inputs": "image",
+        "dataset": "imagenet_mobilenet",
+        "outputs": "MobilenetV1/Predictions/Reshape_1:0",
+        "backend": "pytorch-native",
+        "model-name": "mobilenet",
+    }, 
 
     # ssd-mobilenet
     "ssd-mobilenet-tf": {

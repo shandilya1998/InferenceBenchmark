@@ -51,8 +51,18 @@ class MobileNet(nn.Module):
         return x
 
 
-def get_mobilenet(path="./mobilenet_sgd_68.848.pth.tar"):
+def get_mobilenet(path="weights/mobilenet_sgd_68.848.pth.tar"):
     net = MobileNet()
-    state_dict = torch.load(path)
-    net.load_state_dict(state_dict)
+    state_dict = None
+    if torch.cuda.is_available():
+        state_dict = torch.load(path)
+    else:
+        state_dict = torch.load(path, map_location=torch.device('cpu'))
+    from collections import OrderedDict
+    new_state_dict = OrderedDict()
+    for k, v in state_dict['state_dict'].items():
+        name = k[7:] # remove `module.`
+        new_state_dict[name] = v
+    # load params
+    net.load_state_dict(new_state_dict)
     return net

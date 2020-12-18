@@ -4,7 +4,7 @@ pytoch native backend
 # pylint: disable=unused-argument,missing-docstring
 import torch  # currently supports pytorch1.0
 import backend.backend as backend
-
+from models import mobilenet
 
 
 class BackendPytorchNative(backend.Backend):
