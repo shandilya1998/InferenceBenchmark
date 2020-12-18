@@ -3,3 +3,4 @@ models/resnet-ssd1200.pytorch filter=lfs diff=lfs merge=lfs -text
 models/ssd_mobilenet_v1.pytorch filter=lfs diff=lfs merge=lfs -text
 models/resnet34-ssd1200.pytorch filter=lfs diff=lfs merge=lfs -text
 models/weights filter=lfs diff=lfs merge=lfs -text
+models/weights/resnet50_v1.onnx filter=lfs diff=lfs merge=lfs -text
