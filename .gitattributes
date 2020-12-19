@@ -9,3 +9,9 @@ models/weights/mobilenet_v1.pytorch filter=lfs diff=lfs merge=lfs -text
 models/weights/resnet34-ssd1200.pytorch filter=lfs diff=lfs merge=lfs -text
 models/weights/ssd_mobilenet_v1.pytorch filter=lfs diff=lfs merge=lfs -text
 models/weights/resnet50.pytorch filter=lfs diff=lfs merge=lfs -text
+data/gnmt/data/newstest2014.tok.bpe.32000.de filter=lfs diff=lfs merge=lfs -text
+data/gnmt/data/newstest2014.tok.bpe.32000.en filter=lfs diff=lfs merge=lfs -text
+data/gnmt/data/newstest2014.tok.bpe.32000.en.large filter=lfs diff=lfs merge=lfs -text
+data/gnmt/data/vocab.bpe.32000.de filter=lfs diff=lfs merge=lfs -text
+data/gnmt/data/vocab.bpe.32000.en filter=lfs diff=lfs merge=lfs -text
+data/gnmt/data/bpe.32000 filter=lfs diff=lfs merge=lfs -text

@@ -163,6 +163,8 @@ class PostProcessCoco:
                                               results[2][idx][detection],
                                               float(detection_class)])
                 self.total += 1
+        print('--------call--------')
+        print(self.content_ids)
         return processed_results
 
     def start(self):
@@ -186,6 +188,7 @@ class PostProcessCoco:
         detections = []
         image_indices = []
         for batch in range(0, len(self.results)):
+            print(self.content_ids)
             image_indices.append(self.content_ids[batch])
             for idx in range(0, len(self.results[batch])):
                 detection = self.results[batch][idx]
@@ -240,7 +243,6 @@ class PostProcessCocoPt(PostProcessCoco):
     def __call__(self, results, ids, expected=None, result_dict=None):
         # results come as:
         #   detection_boxes,detection_classes,detection_scores
-
         processed_results = []
         # batch size
         bs = len(results[0])

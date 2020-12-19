@@ -21,6 +21,11 @@ import mlperf_loadgen as lg
 import numpy as np
 from models import mobilenet
 from data import dataset, imagenet, coco
+from data.coco_data import label_map
+import wandb
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from matplotlib.ticker import NullLocator
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("main")
@@ -33,7 +38,7 @@ MILLI_SEC = 1000
 # the datasets we support
 SUPPORTED_DATASETS = {
     "imagenet":
-        (imagenet.Imagenet, dataset.pre_process_vgg, dataset.PostProcessCommon(offset=-1),
+        (imagenet.Imagenet, dataset.pre_process_vgg, dataset.PostProcessArgMax(offset=-1),
          {"image_size": [224, 224, 3]}),
     "imagenet_mobilenet":
         (imagenet.Imagenet, dataset.pre_process_mobilenet, dataset.PostProcessArgMax(offset=-1),
@@ -219,7 +224,6 @@ def get_args():
     # don't use defaults in argparser. Instead we default to a dict, override that with a profile
     # and take this as default unless command line give
     defaults = SUPPORTED_PROFILES["defaults"]
-
     if args.profile:
         profile = SUPPORTED_PROFILES[args.profile]
         defaults.update(profile)
@@ -262,9 +266,48 @@ class Item:
         self.label = label
         self.start = time.time()
 
-
+def log_results(model_name, results, expected, img, output_dir):
+    if model_name == 'ssd-mobilenet':
+        for batch in range(img.shape[0]):
+            cmap = plt.get_cmap("tab20b")
+            colors = [cmap(i) for i in np.linspace(0, 1, len(category_map))]
+            bbox_colors = random.sample(colors, len(category_map))
+            h = img.shape[-2]
+            w = img.shape[-1]
+            f, ax = plt.subplots(1, 1)
+            ax.imshow(img)
+            for i in range(len(results)):
+                y2 = result[i][1]*h
+                x2 = result[i][2]*w
+                x1 = result[i][3]*h
+                x1 = result[i][4]*w
+                cls_pred = results[i][6]
+                box_w = x2 - x1
+                box_h = y2 - y1
+                color = bbox_colors[int(cls_pred)]
+                bbox = patches.Rectangle(
+                    (x1, y1), 
+                    box_w, 
+                    box_h, 
+                    linewidth=2, 
+                    edgecolor=color, 
+                    facecolor="none"
+                )
+                ax.add_patch(bbox)
+                plt.text(
+                    x1,
+                    y1,
+                    s=classes[int(cls_pred)],
+                    color="white",
+                    verticalalignment="top",
+                    bbox={"color": color, "pad": 0},
+                )
+            f.savefig('{model}_pred_')
+        
 class RunnerBase:
-    def __init__(self, model, ds, threads, post_proc=None, max_batchsize=128):
+    def __init__(self, output_dir, model_name, model, ds, threads, post_proc=None, max_batchsize=128):
+        self.output_dir = output_dir
+        self.model_name = model_name
         self.take_accuracy = False
         self.ds = ds
         self.model = model
@@ -306,7 +349,7 @@ class RunnerBase:
                 bi = response_array.buffer_info()
                 response.append(lg.QuerySampleResponse(query_id, bi[0], bi[1]))
             lg.QuerySamplesComplete(response)
-
+        
     def enqueue(self, query_samples):
         idx = [q.index for q in query_samples]
         query_id = [q.id for q in query_samples]
@@ -323,8 +366,8 @@ class RunnerBase:
         pass
 
 class QueueRunner(RunnerBase):
-    def __init__(self, model, ds, threads, post_proc=None, max_batchsize=128):
-        super().__init__(model, ds, threads, post_proc, max_batchsize)
+    def __init__(self, output_dir, model_name, model, ds, threads, post_proc=None, max_batchsize=128):
+        super().__init__(output_dir, model_name, model, ds, threads, post_proc, max_batchsize)
         self.tasks = Queue(maxsize=threads * 4)
         self.workers = []
         self.result_dict = {}
@@ -405,9 +448,11 @@ def add_results(final_results, name, result_dict, result_list, took, show_accura
 def main():
     global last_timeing
     args = get_args()
-
+    model_name = args.model_name
+    print('------------')
+    print(model_name)
+    print('------------')
     log.info(args)
-    print(args.backend)
     # find backend
     backend = get_backend(args.backend)
 
@@ -431,7 +476,6 @@ def main():
                         use_cache=args.cache,
                         count=count, **kwargs)
     # load model to backend
-    print(args.model)
     model = backend.load(args.model, inputs=args.inputs, outputs=args.outputs)
     final_results = {
         "runtime": model.name(),
@@ -449,7 +493,6 @@ def main():
         output_dir = os.path.abspath(args.output)
         os.makedirs(output_dir, exist_ok=True)
         os.chdir(output_dir)
-
     #
     # make one pass over the dataset to validate accuracy
     #
@@ -469,7 +512,7 @@ def main():
         lg.TestScenario.Server: QueueRunner,
         lg.TestScenario.Offline: QueueRunner
     }
-    runner = runner_map[scenario](model, ds, args.threads, post_proc=post_proc, max_batchsize=args.max_batchsize)
+    runner = runner_map[scenario](args.output, model_name, model, ds, args.threads, post_proc=post_proc, max_batchsize=args.max_batchsize)
 
     def issue_queries(query_samples):
         runner.enqueue(query_samples)
