@@ -1,3 +1,4 @@
+
 """
 mlperf inference benchmarking tool
 """
@@ -21,15 +22,17 @@ import mlperf_loadgen as lg
 import numpy as np
 from models import mobilenet
 from data import dataset, imagenet, coco
-from data.coco_data import label_map
 import wandb
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.ticker import NullLocator
-
+import cv2 
+import pickle
+from datetime import datetime
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("main")
-
+import warnings
+warnings.filterwarnings("ignore")
 NANO_SEC = 1e9
 MILLI_SEC = 1000
 
@@ -56,7 +59,7 @@ SUPPORTED_DATASETS = {
         (coco.Coco, dataset.pre_process_coco_resnet34, coco.PostProcessCocoOnnx(),
          {"image_size": [1200, 1200, 3]}),
     "coco-1200-pt":
-        (coco.Coco, dataset.pre_process_coco_resnet34, coco.PostProcessCocoPt(True,0.05),
+        (coco.Coco, dataset.pre_process_coco_resnet34, coco.PostProcessCocoPt(True,0.5),
          {"image_size": [1200, 1200, 3],"use_label_map": True}),
     "coco-1200-tf":
         (coco.Coco, dataset.pre_process_coco_resnet34, coco.PostProcessCocoTf(),
@@ -200,6 +203,7 @@ def get_args():
                         help="mlperf benchmark scenario, one of " + str(list(SCENARIO_MAP.keys())))
     parser.add_argument("--max-batchsize", type=int, help="max batch size in a single inference")
     parser.add_argument("--model", required=True, help="model file")
+    parser.add_argument("--device", required=True, help="device name")
     parser.add_argument("--output", help="test results")
     parser.add_argument("--inputs", help="model inputs")
     parser.add_argument("--outputs", help="model outputs")
@@ -266,44 +270,74 @@ class Item:
         self.label = label
         self.start = time.time()
 
-def log_results(model_name, results, expected, img, output_dir):
-    if model_name == 'ssd-mobilenet':
-        for batch in range(img.shape[0]):
-            cmap = plt.get_cmap("tab20b")
-            colors = [cmap(i) for i in np.linspace(0, 1, len(category_map))]
-            bbox_colors = random.sample(colors, len(category_map))
-            h = img.shape[-2]
-            w = img.shape[-1]
-            f, ax = plt.subplots(1, 1)
-            ax.imshow(img)
-            for i in range(len(results)):
-                y2 = result[i][1]*h
-                x2 = result[i][2]*w
-                x1 = result[i][3]*h
-                x1 = result[i][4]*w
-                cls_pred = results[i][6]
-                box_w = x2 - x1
-                box_h = y2 - y1
-                color = bbox_colors[int(cls_pred)]
-                bbox = patches.Rectangle(
-                    (x1, y1), 
-                    box_w, 
-                    box_h, 
-                    linewidth=2, 
-                    edgecolor=color, 
-                    facecolor="none"
-                )
-                ax.add_patch(bbox)
-                plt.text(
-                    x1,
-                    y1,
-                    s=classes[int(cls_pred)],
-                    color="white",
-                    verticalalignment="top",
-                    bbox={"color": color, "pad": 0},
-                )
-            f.savefig('{model}_pred_')
+def plot_box(ax, xmin, xmax, ymin, ymax, cls_pred, colors, label_map):
+    box_w = xmax - xmin
+    box_h = ymax - ymin
+    color = colors[int(cls_pred)]
+    bbox = patches.Rectangle(
+        (xmin, ymin), 
+        box_w, 
+        box_h, 
+        linewidth=2, 
+        edgecolor=color, 
+        facecolor="none"
+    )   
+    ax.add_patch(bbox)
+    ax.text(
+        xmin, 
+        ymin, 
+        s=label_map[int(cls_pred)],
+        color="white",
+        verticalalignment="top",
+        bbox={"color": color, "pad": 0}, 
+    )   
+
+
+def log_outputs(img, labels, boxes, cls, score, model_name, output_dir, label_map, score_threshold):
+    if model_name == 'ssd-mobilenet' or model_name == 'ssd-resnet34':
+        batch = 0
+        cmap = plt.get_cmap("tab20b")
+        colors = [cmap(i) for i in np.linspace(0, 1, 91)]
+        h = img.shape[0]
+        w = img.shape[1]
+        name = datetime.now().strftime(
+            '{m}_test_{i}%Y%m%d_%H%M%S'
+        ).format(
+            m = model_name,
+            i = batch
+        )
+        f, axes= plt.subplots(1, 2, figsize = (10, 5))
+        axes[0].axis('off')
+        axes[0].imshow(img)
+        axes[0].set_title('Predicted Boxes')
+        for i in range(len(boxes[batch])):
+            xmin = boxes[batch][i][0]*w
+            ymin = boxes[batch][i][1]*h
+            xmax = boxes[batch][i][2]*w
+            ymax = boxes[batch][i][3]*h
+            cls_pred = cls[batch][i]
+            if score[batch][i] > score_threshold:
+                plot_box(axes[0], xmin, xmax, ymin, ymax, cls_pred, colors, label_map)
+        axes[1].axis('off')
+        axes[1].set_title('True Boxes')
+        axes[1].imshow(img)
+        for i in range(len(labels[batch][1])):
+            xmin = labels[batch][1][i][0]
+            ymin = labels[batch][1][i][1]
+            xmax = labels[batch][1][i][0] + labels[batch][1][i][2]
+            ymax = labels[batch][1][i][1] + labels[batch][1][i][3]
+            cls_pred = labels[batch][0][i]
+            plot_box(axes[1], xmin, xmax, ymin, ymax, cls_pred, colors, label_map)
+        path = os.path.join(
+            output_dir,
+            name + '.png'
+        ) 
+        f.savefig(
+            path
+        )
+        im = cv2.imread(path)
         
+
 class RunnerBase:
     def __init__(self, output_dir, model_name, model, ds, threads, post_proc=None, max_batchsize=128):
         self.output_dir = output_dir
@@ -448,6 +482,18 @@ def add_results(final_results, name, result_dict, result_list, took, show_accura
 def main():
     global last_timeing
     args = get_args()
+    name = '{m}_{d}'.format(
+        m = args.model_name, 
+        d = args.device
+    )
+    wandb.init(
+        project = "assignment5-benchmarking",
+        entity = "shandilya1998",
+        name = name,
+        id = name,
+        resume = 'allow',
+        config=args,
+    )
     model_name = args.model_name
     print('------------')
     print(model_name)
@@ -455,7 +501,7 @@ def main():
     log.info(args)
     # find backend
     backend = get_backend(args.backend)
-
+    base_dir = os.getcwd()
     # override image format if given
     image_format = args.data_format if args.data_format else backend.image_format()
 
@@ -477,6 +523,7 @@ def main():
                         count=count, **kwargs)
     # load model to backend
     model = backend.load(args.model, inputs=args.inputs, outputs=args.outputs)
+    wandb.watch(model.model, log = 'all')
     final_results = {
         "runtime": model.name(),
         "version": model.version(),
@@ -488,8 +535,8 @@ def main():
     if not os.path.exists(config):
         log.error("{} not found".format(config))
         sys.exit(1)
-
-    if args.output:
+    
+    if args.output:    
         output_dir = os.path.abspath(args.output)
         os.makedirs(output_dir, exist_ok=True)
         os.chdir(output_dir)
@@ -499,10 +546,27 @@ def main():
     count = ds.get_item_count()
 
     # warmup
-    ds.load_query_samples([0])
-    for _ in range(5):
-        img, _ = ds.get_samples([0])
-        _ = backend.predict({backend.inputs[0]: img})
+    id_list = list(range(5))
+    ds.load_query_samples(id_list)
+    path = ''
+    score_threshold = 0.3
+    if model_name == 'ssd-mobilenet':
+        path = os.path.join(base_dir, args.dataset_path, 'categories.pickle')
+    elif model_name == 'ssd-resnet34':
+        path = os.path.join(base_dir, args.dataset_path, 'categories_resnet34.pickle') 
+    label_map = pickle.load(open(path, 'rb'))
+    for i in range(5):
+        img, labels = ds.get_samples([i]) 
+        if model_name == 'ssd-mobilenet' or model_name == 'ssd_resnet34':
+            boxes, cls, score = backend.predict({backend.inputs[0]: img})
+            path = os.path.join(base_dir, ds.get_item_loc(i))
+            img = cv2.imread(path, cv2.IMREAD_COLOR)
+            boxes = [box.numpy().tolist() for box in boxes]
+            cls = [cl.numpy().tolist() for cl in cls]
+            score = [sc.numpy().tolist() for sc in score]
+            log_outputs(img, labels, boxes, cls, score, args.model_name, args.output, label_map, score_threshold)
+        else:
+            continue 
     ds.unload_query_samples(None)
 
     scenario = SCENARIO_MAP[args.scenario]

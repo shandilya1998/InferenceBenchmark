@@ -242,8 +242,6 @@ def create_mobilenetv1_ssd(num_classes):
 
     return SSD(backbone, predictors, extras)
 
-def get_ssd_mobilenet(num_classes, path = './ssd_mobilenet_v1.pytorch'):
-    model = create_mobilenetv1_ssd(num_classes)
-    state_dict = torch.load(path)
-    model.load_state_dict(state_dict)
+def get_ssd_mobilenet(num_classes, path = 'weights/ssd_mobilenet_v1.pytorch'):
+    model = torch.load(path)
     return model

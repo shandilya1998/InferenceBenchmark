@@ -163,8 +163,6 @@ class PostProcessCoco:
                                               results[2][idx][detection],
                                               float(detection_class)])
                 self.total += 1
-        print('--------call--------')
-        print(self.content_ids)
         return processed_results
 
     def start(self):
