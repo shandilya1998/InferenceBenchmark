@@ -293,7 +293,7 @@ def plot_box(ax, xmin, xmax, ymin, ymax, cls_pred, colors, label_map):
     )   
 
 
-def log_outputs(images, labels, results, tm, model_name, output_dir, label_map, score_threshold):
+def log_outputs(images, labels, results, idx, tm, model_name, output_dir, label_map, score_threshold):
     if model_name == 'ssd-mobilenet' or model_name == 'ssd-resnet34':
         boxes, cls, score = results
         boxes = [box.numpy().tolist() for box in boxes]
@@ -341,7 +341,12 @@ def log_outputs(images, labels, results, tm, model_name, output_dir, label_map, 
             f.savefig(
                 path
             )
-    elif model_name == 'resnet50' or model_name == 'mobilenet':
+            wandb.log({
+                "Prediction Image {id}".format(id=idx[batch]): wandb.Image(path), 
+                "Inference Time" : tm
+            })    
+
+    elif model_name == 'mobilenet' or model_name == 'resnet50':
         results = results.numpy()
         pred = np.argmax(results, 1)
         for batch in range(len(images)):
@@ -366,6 +371,23 @@ def log_outputs(images, labels, results, tm, model_name, output_dir, label_map, 
                 name + '.png'
             )
             f.savefig(path)
+            """wandb.log({datetime.now().strftime(
+                'Prediction Image %Y%m%d_%H%M%S'
+            ) : wandb.Image(path), "Inference Time" : tm})            
+            """
+            wandb.log({
+                "Prediction Image {id}".format(id=idx[batch]) : wandb.Image(path), 
+                "Inference Time" : tm
+            }) 
+    """
+    elif model_name == 'resnet50':
+        print('results')
+        print(results.shape)
+        print('images')
+        print(images)
+        print('labels')
+        print(labels)
+    """
 
 class RunnerBase:
     def __init__(
@@ -418,7 +440,7 @@ class RunnerBase:
                 ) for id in qitem.content_id
             ]
             tm = time.time() - qitem.start
-            log_outputs(img, qitem.label, results, tm, self.model_name, self.output_dir, self.label_map, self.score_threshold)
+            log_outputs(img, qitem.label, results, qitem.content_id, tm, self.model_name, self.output_dir, self.label_map, self.score_threshold)
             processed_results = self.post_process(results, qitem.content_id, qitem.label, self.result_dict)
             if self.take_accuracy:
                 self.post_process.add_results(processed_results)
@@ -437,7 +459,7 @@ class RunnerBase:
                 bi = response_array.buffer_info()
                 response.append(lg.QuerySampleResponse(query_id, bi[0], bi[1]))
             lg.QuerySamplesComplete(response)
-        
+    
     def enqueue(self, query_samples):
         idx = [q.index for q in query_samples]
         query_id = [q.id for q in query_samples]
@@ -538,7 +560,7 @@ def add_results(final_results, name, result_dict, result_list, took, show_accura
 
     # add the result to the result dict
     final_results[name] = result
-
+    wandb.log(result)
     # to stdout
     print("{} qps={:.2f}, mean={:.4f}, time={:.3f}{}, queries={}, tiles={}".format(
         name, result["qps"], result["mean"], took, acc_str,
@@ -553,7 +575,7 @@ def main():
         d = args.device
     )
     wandb.init(
-        project = "assignment5-benchmarking",
+        project = "assignment5",
         entity = "shandilya1998",
         name = name,
         id = name,
@@ -623,7 +645,7 @@ def main():
     elif model_name == 'ssd-resnet34':
         path = os.path.join(base_dir, args.dataset_path, 'categories_resnet34.pickle') 
         label_map = pickle.load(open(path, 'rb'))
-    elif model_name == 'mobilenet':
+    elif model_name == 'mobilenet' or model_name == 'resnet50':
         path = os.path.join(base_dir, args.dataset_path, 'categories.pickle')      
         label_map = pickle.load(open(path, 'rb')) 
     for i in range(5):
