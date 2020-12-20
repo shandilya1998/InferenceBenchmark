@@ -293,53 +293,97 @@ def plot_box(ax, xmin, xmax, ymin, ymax, cls_pred, colors, label_map):
     )   
 
 
-def log_outputs(img, labels, boxes, cls, score, model_name, output_dir, label_map, score_threshold):
+def log_outputs(images, labels, results, tm, model_name, output_dir, label_map, score_threshold):
     if model_name == 'ssd-mobilenet' or model_name == 'ssd-resnet34':
+        boxes, cls, score = results
+        boxes = [box.numpy().tolist() for box in boxes]
+        cls = [cl.numpy().tolist() for cl in cls]
+        score = [sc.numpy().tolist() for sc in score]
         batch = 0
         cmap = plt.get_cmap("tab20b")
         colors = [cmap(i) for i in np.linspace(0, 1, 91)]
-        h = img.shape[0]
-        w = img.shape[1]
-        name = datetime.now().strftime(
-            '{m}_test_{i}%Y%m%d_%H%M%S'
-        ).format(
-            m = model_name,
-            i = batch
-        )
-        f, axes= plt.subplots(1, 2, figsize = (10, 5))
-        axes[0].axis('off')
-        axes[0].imshow(img)
-        axes[0].set_title('Predicted Boxes')
-        for i in range(len(boxes[batch])):
-            xmin = boxes[batch][i][0]*w
-            ymin = boxes[batch][i][1]*h
-            xmax = boxes[batch][i][2]*w
-            ymax = boxes[batch][i][3]*h
-            cls_pred = cls[batch][i]
-            if score[batch][i] > score_threshold:
-                plot_box(axes[0], xmin, xmax, ymin, ymax, cls_pred, colors, label_map)
-        axes[1].axis('off')
-        axes[1].set_title('True Boxes')
-        axes[1].imshow(img)
-        for i in range(len(labels[batch][1])):
-            xmin = labels[batch][1][i][0]
-            ymin = labels[batch][1][i][1]
-            xmax = labels[batch][1][i][0] + labels[batch][1][i][2]
-            ymax = labels[batch][1][i][1] + labels[batch][1][i][3]
-            cls_pred = labels[batch][0][i]
-            plot_box(axes[1], xmin, xmax, ymin, ymax, cls_pred, colors, label_map)
-        path = os.path.join(
-            output_dir,
-            name + '.png'
-        ) 
-        f.savefig(
-            path
-        )
-        im = cv2.imread(path)
-        
+        for batch in range(len(images)):
+            img = cv2.imread(images[batch])
+            h = img.shape[0]
+            w = img.shape[1]
+            name = datetime.now().strftime(
+                '{m}_test_{i}%Y%m%d_%H%M%S'
+            ).format(
+                m = model_name,
+                i = batch
+            )
+            f, axes= plt.subplots(1, 2, figsize = (10, 5))
+            axes[0].axis('off')
+            axes[0].imshow(img)
+            axes[0].set_title('Predicted Boxes')
+            for i in range(len(boxes[batch])):
+                xmin = boxes[batch][i][0]*w
+                ymin = boxes[batch][i][1]*h
+                xmax = boxes[batch][i][2]*w
+                ymax = boxes[batch][i][3]*h
+                cls_pred = cls[batch][i]
+                if score[batch][i] > score_threshold:
+                    plot_box(axes[0], xmin, xmax, ymin, ymax, cls_pred, colors, label_map)
+            axes[1].axis('off')
+            axes[1].set_title('True Boxes')
+            axes[1].imshow(img)
+            for i in range(len(labels[batch][1])):
+                xmin = labels[batch][1][i][0]
+                ymin = labels[batch][1][i][1]
+                xmax = labels[batch][1][i][0] + labels[batch][1][i][2]
+                ymax = labels[batch][1][i][1] + labels[batch][1][i][3]
+                cls_pred = labels[batch][0][i]
+                plot_box(axes[1], xmin, xmax, ymin, ymax, cls_pred, colors, label_map)
+            path = os.path.join(
+                output_dir,
+                name + '.png'
+            ) 
+            f.savefig(
+                path
+            )
+    elif model_name == 'resnet50' or model_name == 'mobilenet':
+        results = results.numpy()
+        pred = np.argmax(results, 1)
+        for batch in range(len(images)):
+            cls = label_map[labels[batch]]
+            cls_pred = label_map[pred[batch]]
+            img = cv2.imread(images[batch])
+            name = datetime.now().strftime(
+                '{m}_test_{i}%Y%m%d_%H%M%S'
+            ).format(
+                m = model_name,
+                i = batch
+            )   
+            f, ax = plt.subplots(1, 1) 
+            ax.axis('off')
+            ax.imshow(img)
+            ax.set_title('Predicted : {pr} \n True : {tr}'.format(
+                pr = cls_pred, 
+                tr = cls
+            ))
+            path = os.path.join(
+                output_dir,
+                name + '.png'
+            )
+            f.savefig(path)
 
 class RunnerBase:
-    def __init__(self, output_dir, model_name, model, ds, threads, post_proc=None, max_batchsize=128):
+    def __init__(
+        self, 
+        base_dir, 
+        output_dir, 
+        model_name, 
+        model, 
+        ds, 
+        threads, 
+        post_proc=None,
+        max_batchsize=128, 
+        label_map = None, 
+        score_threshold = 0.3
+    ):
+        self.base_dir = base_dir
+        self.label_map = label_map
+        self.score_threshold = score_threshold
         self.output_dir = output_dir
         self.model_name = model_name
         self.take_accuracy = False
@@ -365,6 +409,16 @@ class RunnerBase:
         processed_results = []
         try:
             results = self.model.predict({self.model.inputs[0]: qitem.img})
+            img = [
+                os.path.join(
+                    self.base_dir, 
+                    self.ds.get_item_loc(
+                        id
+                    )
+                ) for id in qitem.content_id
+            ]
+            tm = time.time() - qitem.start
+            log_outputs(img, qitem.label, results, tm, self.model_name, self.output_dir, self.label_map, self.score_threshold)
             processed_results = self.post_process(results, qitem.content_id, qitem.label, self.result_dict)
             if self.take_accuracy:
                 self.post_process.add_results(processed_results)
@@ -400,8 +454,20 @@ class RunnerBase:
         pass
 
 class QueueRunner(RunnerBase):
-    def __init__(self, output_dir, model_name, model, ds, threads, post_proc=None, max_batchsize=128):
-        super().__init__(output_dir, model_name, model, ds, threads, post_proc, max_batchsize)
+    def __init__(
+        self, 
+        base_dir, 
+        output_dir, 
+        model_name, 
+        model, 
+        ds, 
+        threads, 
+        post_proc=None, 
+        max_batchsize=128,
+        label_map = None,
+        score_threshold = 0.3
+    ):
+        super().__init__(base_dir, output_dir, model_name, model, ds, threads, post_proc, max_batchsize, label_map, score_threshold)
         self.tasks = Queue(maxsize=threads * 4)
         self.workers = []
         self.result_dict = {}
@@ -550,23 +616,19 @@ def main():
     ds.load_query_samples(id_list)
     path = ''
     score_threshold = 0.3
+    label_map = None
     if model_name == 'ssd-mobilenet':
         path = os.path.join(base_dir, args.dataset_path, 'categories.pickle')
+        label_map = pickle.load(open(path, 'rb'))
     elif model_name == 'ssd-resnet34':
         path = os.path.join(base_dir, args.dataset_path, 'categories_resnet34.pickle') 
-    label_map = pickle.load(open(path, 'rb'))
+        label_map = pickle.load(open(path, 'rb'))
+    elif model_name == 'mobilenet':
+        path = os.path.join(base_dir, args.dataset_path, 'categories.pickle')      
+        label_map = pickle.load(open(path, 'rb')) 
     for i in range(5):
         img, labels = ds.get_samples([i]) 
-        if model_name == 'ssd-mobilenet' or model_name == 'ssd_resnet34':
-            boxes, cls, score = backend.predict({backend.inputs[0]: img})
-            path = os.path.join(base_dir, ds.get_item_loc(i))
-            img = cv2.imread(path, cv2.IMREAD_COLOR)
-            boxes = [box.numpy().tolist() for box in boxes]
-            cls = [cl.numpy().tolist() for cl in cls]
-            score = [sc.numpy().tolist() for sc in score]
-            log_outputs(img, labels, boxes, cls, score, args.model_name, args.output, label_map, score_threshold)
-        else:
-            continue 
+        _ = backend.predict({backend.inputs[0]: img})
     ds.unload_query_samples(None)
 
     scenario = SCENARIO_MAP[args.scenario]
@@ -576,7 +638,7 @@ def main():
         lg.TestScenario.Server: QueueRunner,
         lg.TestScenario.Offline: QueueRunner
     }
-    runner = runner_map[scenario](args.output, model_name, model, ds, args.threads, post_proc=post_proc, max_batchsize=args.max_batchsize)
+    runner = runner_map[scenario](base_dir, args.output, model_name, model, ds, args.threads, post_proc=post_proc, max_batchsize=args.max_batchsize, label_map = label_map, score_threshold = score_threshold)
 
     def issue_queries(query_samples):
         runner.enqueue(query_samples)
@@ -597,7 +659,6 @@ def main():
         settings.mode = lg.TestMode.AccuracyOnly
     if args.find_peak_performance:
         settings.mode = lg.TestMode.FindPeakPerformance
-
     if args.time:
         # override the time we want to run
         settings.min_duration_ms = args.time * MILLI_SEC
